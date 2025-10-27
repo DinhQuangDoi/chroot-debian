@@ -109,6 +109,7 @@ fi
 
 echo ""
 echo "[✓] Installation complete!"
+echo "• Type exit or Ctrl+D to exit root then"
 echo "• GUI Mode  →  debian"
 echo "• CLI Mode  →  debian-cli"
 echo "• RootFS    →  $DEBIANPATH"
