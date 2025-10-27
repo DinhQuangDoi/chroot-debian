@@ -1,5 +1,5 @@
 #!/bin/bash
-# Debian 12 XFCE Installer for Termux-X11 (by DinhQuangDoi 2025)
+# Debian XFCE installer (all-in-one, 2025-10 by Lixin)
 
 set -e
 
@@ -11,30 +11,100 @@ SCRIPTS_URL="https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/s
 
 echo "=== Debian XFCE Installer ==="
 
-info() { echo -e "\e[1;36m[+] $1\e[0m"; }
-success() { echo -e "\e[1;32m[✓] $1\e[0m"; }
-error() { echo -e "\e[1;31m[!] $1\e[0m"; exit 1; }
+# === Check root ===
+[ "$(id -u)" != "0" ] && { echo "[!] Please run as root (su)"; exit 1; }
 
-# Kiểm tra quyền root
-info "Checking environment..."
-[ "$(id -u)" != "0" ] && error "Run this installer as root (su)."
+# === Check busybox ===
+[ -z "$BUSYBOX" ] && { echo "[!] BusyBox not found!"; exit 1; }
 
-# Chuẩn bị thư mục
-info "Preparing directories..."
+# === Prepare directories ===
+echo "[*] Preparing directories..."
 $BUSYBOX mkdir -p "$DEBIANPATH"
-cd "$DEBIANPATH"
 
-# Tải Debian rootfs
-info "Downloading Debian rootfs..."
-if [ ! -f debian12-arm64.tar.gz ]; then
-    $BUSYBOX wget -O debian12-arm64.tar.gz "$ROOTFS_URL" || error "Failed to download rootfs."
+# === Download rootfs if missing ===
+if [ ! -f "$DEBIANPATH/debian12-arm64.tar.gz" ]; then
+    echo "[*] Downloading Debian rootfs..."
+    $BUSYBOX wget -O "$DEBIANPATH/debian12-arm64.tar.gz" "$ROOTFS_URL"
 else
     echo "[!] Rootfs already exists, skipping download."
 fi
 
-# Giải nén
-info "Extracting Debian rootfs..."
-$BUSYBOX tar -xpf debian12-arm64.tar.gz --numeric-owner -C "$DEBIANPATH" || error "Extraction failed."
+# === Extract rootfs if not yet ===
+if [ ! -d "$DEBIANPATH/bin" ]; then
+    echo "[*] Extracting Debian rootfs..."
+    cd "$DEBIANPATH"
+    tar -xpf debian12-arm64.tar.gz --numeric-owner || true
+else
+    echo "[!] Rootfs already extracted, skipping."
+fi
+
+# === Configure base environment ===
+echo "[*] Configuring base environment..."
+$BUSYBOX mount -o remount,dev,suid /data
+$BUSYBOX mount --bind /dev "$DEBIANPATH/dev" || true
+$BUSYBOX mount --bind /sys "$DEBIANPATH/sys" || true
+$BUSYBOX mount --bind /proc "$DEBIANPATH/proc" || true
+$BUSYBOX mount -t devpts devpts "$DEBIANPATH/dev/pts" || true
+$BUSYBOX mkdir -p "$DEBIANPATH/dev/shm"
+$BUSYBOX mount -t tmpfs -o size=256M tmpfs "$DEBIANPATH/dev/shm" || true
+$BUSYBOX mkdir -p "$DEBIANPATH/sdcard"
+$BUSYBOX mount --bind /sdcard "$DEBIANPATH/sdcard" || true
+
+# Fix networking inside chroot
+$BUSYBOX chroot "$DEBIANPATH" /bin/bash -c "
+echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+echo '127.0.0.1 localhost' > /etc/hosts
+groupadd -g 3003 aid_inet || true
+groupadd -g 3004 aid_net_raw || true
+groupadd -g 1003 aid_graphics || true
+usermod -g 3003 -G 3003,3004 -a _apt || true
+usermod -G 3003 -a root || true
+apt update -y && apt install -y nano vim net-tools sudo git dbus-x11 xfce4 xfce4-terminal
+"
+
+echo "[✓] Base environment configured."
+
+# === Ask for username ===
+echo -n "Enter username for Debian [default: lixin]: "
+read USERNAME
+[ -z "$USERNAME" ] && USERNAME="lixin"
+
+# === Create user ===
+$BUSYBOX chroot "$DEBIANPATH" /bin/bash -c "
+if ! id $USERNAME >/dev/null 2>&1; then
+    adduser --disabled-password --gecos '' $USERNAME
+    echo '$USERNAME ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers
+    usermod -aG aid_inet $USERNAME
+fi
+"
+
+# === Download runtime scripts ===
+echo "[*] Downloading runtime scripts..."
+$BUSYBOX mkdir -p "$DEBIANPATH/scripts"
+for FILE in start-x11.sh start-cli.sh dx.sh dx-cli.sh; do
+    $BUSYBOX wget -O "$DEBIANPATH/scripts/$FILE" "$SCRIPTS_URL/$FILE"
+done
+chmod +x "$DEBIANPATH/scripts/"*.sh
+
+# === Copy dx launchers ===
+$BUSYBOX cp "$DEBIANPATH/scripts/dx.sh" "$PREFIX_PATH/bin/dx"
+$BUSYBOX cp "$DEBIANPATH/scripts/dx-cli.sh" "$PREFIX_PATH/bin/dx-cli"
+chmod +x "$PREFIX_PATH/bin/dx" "$PREFIX_PATH/bin/dx-cli"
+
+# === Inject user into launchers ===
+$BUSYBOX sed -i "s|USER=.*|USER=\"$USERNAME\"|g" "$PREFIX_PATH/bin/dx" "$PREFIX_PATH/bin/dx-cli"
+
+# === Create aliases ===
+if ! grep -q "alias debian=" "$PREFIX_PATH/etc/bash.bashrc" 2>/dev/null; then
+    echo "alias debian='dx'" >> "$PREFIX_PATH/etc/bash.bashrc"
+    echo "alias debian-cli='dx-cli'" >> "$PREFIX_PATH/etc/bash.bashrc"
+fi
+
+echo ""
+echo "[✓] Installation complete!"
+echo "You can now run:"
+echo "  • debian      (GUI XFCE)"
+echo "  • debian-cli  (CLI terminal)"$BUSYBOX tar -xpf debian12-arm64.tar.gz --numeric-owner -C "$DEBIANPATH" || error "Extraction failed."
 
 # Mount cần thiết
 info "Mounting environment..."
