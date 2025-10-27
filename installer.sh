@@ -1,40 +1,105 @@
-#!/system/bin/sh
-# Debian 12 XFCE chroot installer for Termux-X11
-# Run as root inside Termux:
-# su
-# busybox wget -O installer.sh https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/installer.sh
-# chmod +x installer.sh && sh installer.sh
+#!/bin/bash
+# Debian 12 XFCE Installer for Termux-X11 (by DinhQuangDoi 2025)
 
-goodbye() { echo -e "\e[1;31m[!] Something went wrong. Exiting...\e[0m"; exit 1; }
-progress() { echo -e "\e[1;36m[+] $1\e[0m"; }
-success() { echo -e "\e[1;32m[✓] $1\e[0m"; }
+set -e
 
-CHROOT="/data/local/tmp/chrootDebian"
+DEBIANPATH="/data/local/tmp/chrootDebian"
+BUSYBOX=$(command -v busybox)
+PREFIX_PATH="/data/data/com.termux/files/usr"
 ROOTFS_URL="https://github.com/LinuxDroidMaster/Termux-Desktops/releases/download/Debian/debian12-arm64.tar.gz"
+SCRIPTS_URL="https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/scripts"
 
-main() {
-    if [ "$(id -u)" != "0" ]; then
-        echo -e "\e[1;31m[!] Run this script as root.\e[0m"; exit 1
-    fi
+# ────────────────────────────────
+echo "=== Debian XFCE Installer ==="
 
-    mkdir -p "$CHROOT" || goodbye
-    cd "$CHROOT" || goodbye
+info() { echo -e "\e[1;36m[+] $1\e[0m"; }
+success() { echo -e "\e[1;32m[✓] $1\e[0m"; }
+error() { echo -e "\e[1;31m[!] $1\e[0m"; exit 1; }
 
-    progress "Downloading Debian 12 rootfs..."
-    if [ ! -f debian12-arm64.tar.gz ]; then
-        busybox wget -O debian12-arm64.tar.gz "$ROOTFS_URL" || goodbye
-    else
-        echo "[!] Found existing rootfs, skipping download."
-    fi
+# ────────────────────────────────
+info "Checking environment..."
+[ "$(id -u)" != "0" ] && error "Run this installer as root (su)."
 
-    progress "Extracting rootfs..."
-    tar --numeric-owner -xpf debian12-arm64.tar.gz -C "$CHROOT" >/dev/null 2>&1 || goodbye
-    success "Rootfs extracted successfully."
+# ────────────────────────────────
+info "Preparing directories..."
+$BUSYBOX mkdir -p "$DEBIANPATH"
+cd "$DEBIANPATH"
 
-    progress "Applying Android mount and network setup..."
-    busybox mount -o remount,dev,suid /data
-    for d in dev sys proc; do busybox mount --bind /$d "$CHROOT/$d"; done
-    mkdir -p "$CHROOT/dev/pts" "$CHROOT/dev/shm" "$CHROOT/sdcard"
+# ────────────────────────────────
+info "Downloading Debian rootfs..."
+if [ ! -f debian12-arm64.tar.gz ]; then
+    $BUSYBOX wget -O debian12-arm64.tar.gz "$ROOTFS_URL" || error "Failed to download rootfs."
+else
+    echo "[!] Rootfs already exists, skipping download."
+fi
+
+# ────────────────────────────────
+info "Extracting Debian rootfs..."
+$BUSYBOX tar -xpf debian12-arm64.tar.gz --numeric-owner -C "$DEBIANPATH" || error "Extraction failed."
+
+# ────────────────────────────────
+info "Configuring base environment..."
+$BUSYBOX chroot "$DEBIANPATH" /bin/sh -c "
+echo 'nameserver 8.8.8.8' > /etc/resolv.conf
+echo '127.0.0.1 localhost' > /etc/hosts
+groupadd -g 3003 aid_inet
+groupadd -g 3004 aid_net_raw
+groupadd -g 1003 aid_graphics
+usermod -g 3003 -G 3003,3004 -a _apt
+usermod -G 3003 -a root
+apt update -y && apt upgrade -y
+apt install -y sudo nano vim net-tools git dbus-x11 xfce4 xfce4-terminal
+"
+
+success "Base environment configured."
+
+# ────────────────────────────────
+echo ""
+read -p "Enter username for Debian: " USERNAME
+[ -z "$USERNAME" ] && USERNAME="lixin"
+
+info "Creating user '$USERNAME'..."
+$BUSYBOX chroot "$DEBIANPATH" /bin/sh -c "
+adduser --disabled-password --gecos '' '$USERNAME'
+echo '$USERNAME ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers
+usermod -aG aid_inet '$USERNAME'
+"
+
+success "User '$USERNAME' added."
+
+# ────────────────────────────────
+info "Downloading runtime scripts..."
+mkdir -p "$DEBIANPATH/scripts" "$PREFIX_PATH/bin"
+
+for FILE in start-x11.sh start-cli.sh dx.sh dx-cli.sh; do
+    $BUSYBOX wget -O "$DEBIANPATH/scripts/$FILE" "$SCRIPTS_URL/$FILE" || error "Failed to fetch $FILE"
+done
+
+# Termux-side launchers
+$BUSYBOX cp "$DEBIANPATH/scripts/dx.sh" "$PREFIX_PATH/bin/dx"
+$BUSYBOX cp "$DEBIANPATH/scripts/dx-cli.sh" "$PREFIX_PATH/bin/dx-cli"
+
+chmod +x "$DEBIANPATH/scripts/"*.sh "$PREFIX_PATH/bin/dx" "$PREFIX_PATH/bin/dx-cli"
+
+# Update username inside scripts
+$BUSYBOX sed -i "s|USER=.*|USER=\"$USERNAME\"|g" "$PREFIX_PATH/bin/dx" "$PREFIX_PATH/bin/dx-cli"
+
+# ────────────────────────────────
+info "Adding convenient aliases..."
+if ! grep -q "alias debian=" "$PREFIX_PATH/etc/bash.bashrc" 2>/dev/null; then
+    echo "alias debian='dx'" >> "$PREFIX_PATH/etc/bash.bashrc"
+    echo "alias debian-cli='dx-cli'" >> "$PREFIX_PATH/etc/bash.bashrc"
+fi
+
+success "Aliases added (debian / debian-cli)."
+
+# ────────────────────────────────
+echo ""
+success "Installation complete!"
+echo "• GUI Mode  →  debian"
+echo "• CLI Mode  →  debian-cli"
+echo "• RootFS    →  $DEBIANPATH"
+echo ""    mkdir -p "$CHROOT/dev/pts" "$CHROOT/dev/shm" "$CHROOT/sdcard"
     busybox mount -t devpts devpts "$CHROOT/dev/pts"
     busybox mount -t tmpfs -o size=256M tmpfs "$CHROOT/dev/shm"
     busybox mount --bind /sdcard "$CHROOT/sdcard"
