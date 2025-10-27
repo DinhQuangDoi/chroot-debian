@@ -31,7 +31,9 @@ pkg install -y tsu pulseaudio
 - Gõ `su` để truy cập shell root  
 - Sau đó dán lệnh sau để bắt đầu quá trình cài đặt:
 ```bash
-busybox curl -fsSL https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/installer.sh | bash
+busybox wget -O installer.sh https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/installer.sh
+chmod +x installer.sh
+sh installer.sh
 ```
 ---
 
