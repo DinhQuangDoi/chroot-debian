@@ -38,6 +38,7 @@ sh installer.sh
 ---
 
 ## 4. Ghi chú
+- Sau khi hoàn tất gõ exit hoặc Ctrl+D để thoát root shell
 - Dùng lệnh:  
   - `debian` để khởi chạy giao diện **Debian XFCE** trong Termux-X11  
   - `debian-cli` để vào **Debian CLI** (không giao diện)  
