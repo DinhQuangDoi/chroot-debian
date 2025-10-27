@@ -51,7 +51,8 @@ $BUSYBOX mkdir -p "$DEBIANPATH/sdcard"
 $BUSYBOX mount --bind /sdcard "$DEBIANPATH/sdcard" || true
 
 # Fix networking inside chroot
-$BUSYBOX chroot "$DEBIANPATH" /bin/bash -c "
+$BUSYBOX chroot "$DEBIANPATH" /bin/bash -lc "
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 echo 'nameserver 8.8.8.8' > /etc/resolv.conf
 echo '127.0.0.1 localhost' > /etc/hosts
 groupadd -g 3003 aid_inet || true
@@ -59,7 +60,8 @@ groupadd -g 3004 aid_net_raw || true
 groupadd -g 1003 aid_graphics || true
 usermod -g 3003 -G 3003,3004 -a _apt || true
 usermod -G 3003 -a root || true
-apt update -y && apt install -y nano vim net-tools sudo git dbus-x11 xfce4 xfce4-terminal
+apt update -y
+apt install -y nano vim net-tools sudo git dbus-x11 xfce4 xfce4-terminal
 "
 
 echo "[✓] Base environment configured."
