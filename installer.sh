@@ -12,12 +12,12 @@ echo "=== Debian XFCE Installer ==="
 ping -c 1 8.8.8.8 >/dev/null 2>&1 || { echo "[!] No internet."; exit 1; }
 
 # Download & extract
-mkdir -p "$CHROOT"
+$BUSYBOX mkdir -p "$CHROOT"
 [ -f "$CHROOT/debian12-arm64.tar.gz" ] || {
   echo "[*] Downloading Debian rootfs..."
-  wget -O "$CHROOT/debian12-arm64.tar.gz" "$ROOTFS_URL" || exit 1
+ $BUSYBOX wget -O "$CHROOT/debian12-arm64.tar.gz" "$ROOTFS_URL" || exit 1
 }
-tar -xpf "$CHROOT/debian12-arm64.tar.gz" -C "$CHROOT" --numeric-owner || exit 1
+$BUSYBOX tar -xpf "$CHROOT/debian12-arm64.tar.gz" -C "$CHROOT" --numeric-owner || exit 1
 
 echo "nameserver 8.8.8.8" > "$CHROOT/etc/resolv.conf"
 echo "127.0.0.1 localhost" > "$CHROOT/etc/hosts"
