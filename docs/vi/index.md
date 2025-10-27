@@ -31,14 +31,14 @@ pkg install -y tsu pulseaudio
 - Gõ `su` để truy cập shell root  
 - Sau đó dán lệnh sau để bắt đầu quá trình cài đặt:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/installer.sh | bash
+busybox curl -fsSL https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/installer.sh | bash
 ```
 ---
 
 ## 4. Ghi chú
 - Dùng lệnh:  
   - `debian` để khởi chạy giao diện **Debian XFCE** trong Termux-X11  
-  - `debian-cli` để vào **Debian CLI** (dòng lệnh)  
+  - `debian-cli` để vào **Debian CLI** (không giao diện)  
 - Đường dẫn rootfs Debian: `/data/local/tmp/chrootDebian`  
 - XFCE kết nối trực tiếp qua socket X11: `/tmp/.X11-unix`  
 - PulseAudio chạy qua TCP tại địa chỉ: `tcp:127.0.0.1:4713`
