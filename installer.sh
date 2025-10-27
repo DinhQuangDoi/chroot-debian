@@ -37,6 +37,9 @@ if [ ! -d "$DEBIANPATH/bin" ]; then
 else
     echo "[!] Rootfs already extracted, skipping."
 fi
+if [ -d "$DEBIANPATH/debian12-arm64" ]; then
+    DEBIANPATH="$DEBIANPATH/debian12-arm64"
+fi
 
 # === Configure base environment ===
 echo "[*] Configuring base environment..."
