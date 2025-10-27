@@ -13,7 +13,7 @@ This repo is remake from [DroidMaster](https://github.com/LinuxDroidMaster/Termu
 - [Termux](https://github.com/termux/termux-app/releases/tag/v0.118.3)
 - [Termux-X11](https://github.com/termux/termux-x11/releases/)
 - [BusyBox](https://github.com/Magisk-Modules-Repo/busybox-ndk)
-- !Skip install BusyBox if you using KSU and fork of KSU.
+- ⚠️ Skip install BusyBox if you using KSU and fork of KSU.
 ---
 
 ## 2. Install the necessary packages
@@ -32,7 +32,7 @@ pkg install -y tsu pulseaudio
 - Enter `su` to access root shell
 - Paste this command and the installation process will start
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/installer.sh | bash
+busybox curl -fsSL https://raw.githubusercontent.com/DinhQuangDoi/chroot-debian/main/installer.sh | bash
 ```
 ---
 
